@@ -28,7 +28,7 @@ answer = answer_with_llm(
     question=question,
     contexts=contexts,
     llm_provider="openai",
-    api_key="REMOVED"
+    api_key=""
 )
 
 print("\n📌 Answer:")

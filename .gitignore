@@ -1,0 +1,38 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+
+# Virtual environment
+.venv/
+venv*/
+env*/
+
+# Output and temp data
+output/
+repos/
+logs/
+*.pdf
+
+# Node and edge dumps
+**/graph_nodes.json
+**/graph_edges.json
+*.graphml
+
+# Jupyter
+*.ipynb
+.ipynb_checkpoints/
+
+# Tree-sitter build
+build/
+my-languages.so
+
+# IDEs
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db

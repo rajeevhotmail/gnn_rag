@@ -26,9 +26,10 @@ def log_matched_nodes_and_neighbors(graph, nodes, top_nodes, expanded_ids):
     for node_id, score in top_nodes:
         node = id_to_node.get(node_id)
         if node:
-            name = node.name or "<unnamed>"
-            typ = node.metadata.get("type", "") if node.metadata else "unknown"
+            name = node.name or node.id.split("::")[-1]
+            typ = getattr(node, "type", "unknown")
             print(f"  🟢 {name} ({typ}) - score: {score:.3f}")
+            print(f"  🔸 {name} ({typ}) - ID: {node.id}")
         else:
             print(f"  ⚠️ Node {node_id} not found in loaded nodes (skipped)")
 
@@ -37,9 +38,11 @@ def log_matched_nodes_and_neighbors(graph, nodes, top_nodes, expanded_ids):
         if nid not in [n[0] for n in top_nodes]:
             node = id_to_node.get(nid)
             if node:
-                name = node.name or "<unnamed>"
-                typ = node.metadata.get("type", "") if node.metadata else "unknown"
+                name = node.name or node.id.split("::")[-1]
+                typ = getattr(node, "type", "unknown")
                 print(f"  🔸 {name} ({typ})")
+                print(f"  🔸 {name} ({typ}) - ID: {node.id}")
+
 
 
 def expand_neighbors(graph: nx.DiGraph, node_ids: list, hops: int = 1) -> list:

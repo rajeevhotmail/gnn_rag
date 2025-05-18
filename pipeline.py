@@ -24,10 +24,8 @@ group.add_argument("--local-path", help="Path to a local codebase folder")
 args = parser.parse_args()
 
 # Ask user for a question
-question = input("🔍 Enter your question: ").strip()
-if not question:
-    print("❌ No question entered.")
-    sys.exit(1)
+print("💬 Ask your questions (type 'exit' to quit)\n")
+
 
 # Determine repo name
 if args.url:
@@ -51,32 +49,42 @@ embedding_dict = encode_graph_with_gnn(G, dim=384)
 
 # Embed the question
 model = SentenceTransformer("all-MiniLM-L6-v2")
-q_vec = embed_question(question, model)
-
-# Retrieve + expand
-top_nodes = find_top_k_nodes(q_vec, embedding_dict, k=5)
-top_ids = [nid for nid, _ in top_nodes]
-expanded_ids = expand_neighbors(G, top_ids, hops=1)
-
-# Log matched nodes
-log_matched_nodes_and_neighbors(G, nodes, top_nodes, expanded_ids)
-
-# Fetch context
-all_contexts = get_node_contexts(expanded_ids, nodes)
-contexts = truncate_contexts(all_contexts, max_tokens=12000)
-
-# Answer with OpenAI
 api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
     print("❌ OPENAI_API_KEY environment variable is not set.")
     sys.exit(1)
 
-answer = answer_with_llm(
-    question=question,
-    contexts=contexts,
-    llm_provider="openai",
-    api_key=api_key
-)
+while True:
+    question = input("❓> ").strip()
+    if question.lower() == "exit":
+        break
+    if not question:
+        continue
 
-print("\n📌 Answer:")
-print(answer)
+    # Step 1: Embed question
+    q_vec = embed_question(question, model)
+
+    # Step 2: Retrieve top nodes and expand
+
+    top_nodes = find_top_k_nodes(q_vec, embedding_dict, k=20)
+    top_ids = [nid for nid, _ in top_nodes]
+    expanded_ids = expand_neighbors(G, top_ids, hops=1)
+
+    # Step 3: Log
+    log_matched_nodes_and_neighbors(G, nodes, top_nodes, expanded_ids)
+
+    # Step 4: Fetch and truncate context
+    all_contexts = get_node_contexts(expanded_ids, nodes)
+    contexts = truncate_contexts(all_contexts, max_tokens=12000)
+
+    # Step 5: LLM answer
+    answer = answer_with_llm(
+        question=question,
+        contexts=contexts,
+        llm_provider="openai",
+        api_key=api_key
+    )
+
+    print("\n📌 Answer:")
+    print(answer)
+    print("\n" + "-"*50 + "\n")

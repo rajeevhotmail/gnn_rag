@@ -4,7 +4,9 @@ from tree_sitter import Language, Parser
 from utils.types import Node, Edge
 import os
 from typing import List
+from codebert_embedder import CodeBERTEmbedder
 
+embedder = CodeBERTEmbedder()
 # Load the Python grammar (update path if needed)
 LANGUAGE = Language('build/my-languages.so', 'python')
 parser = Parser()
@@ -32,6 +34,8 @@ def extract_nodes_and_edges_from_python(file_path: str) -> (List[Node], List[Edg
         if node.type == "function_definition":
             func_name = get_node_text(node.child_by_field_name("name"), code)
             func_id = f"{file_path}::function::{func_name}"
+            func_content = get_code_slice(code, node)
+            embedding = embedder.embed(func_content).squeeze(0).tolist() if func_content.strip() else [0.0] * 768
             nodes.append(Node(
                 id=func_id,
                 type="function",
@@ -39,14 +43,18 @@ def extract_nodes_and_edges_from_python(file_path: str) -> (List[Node], List[Edg
                 file_path=file_path,
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
-                content=get_code_slice(code, node),
+                content=func_content,
+                embedding=embedding,
             ))
+
             if parent_id:
                 edges.append(Edge(source=parent_id, target=func_id, relation="defines"))
 
         elif node.type == "class_definition":
             class_name = get_node_text(node.child_by_field_name("name"), code)
             class_id = f"{file_path}::class::{class_name}"
+            class_content = get_code_slice(code, node)
+            embedding = embedder.embed(class_content).squeeze(0).tolist() if class_content.strip() else [0.0] * 768
             nodes.append(Node(
                 id=class_id,
                 type="class",
@@ -54,8 +62,10 @@ def extract_nodes_and_edges_from_python(file_path: str) -> (List[Node], List[Edg
                 file_path=file_path,
                 start_line=node.start_point[0] + 1,
                 end_line=node.end_point[0] + 1,
-                content=get_code_slice(code, node),
+                content=class_content,
+                embedding=embedding,
             ))
+
             if parent_id:
                 edges.append(Edge(source=parent_id, target=class_id, relation="defines"))
 
@@ -73,12 +83,14 @@ def extract_nodes_and_edges_from_python(file_path: str) -> (List[Node], List[Edg
 
     # Add file as a node
     file_id = f"{file_path}::file"
+    embedding = embedder.embed(code).squeeze(0).tolist() if code.strip() else [0.0] * 768
     nodes.append(Node(
         id=file_id,
         type="file",
         name=os.path.basename(file_path),
         file_path=file_path,
         content=code,
+        embedding=embedding,
     ))
 
     traverse(root, parent_id=file_id)

@@ -4,6 +4,50 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import openai
+import networkx as nx
+import tiktoken
+def truncate_contexts(contexts: list, max_tokens: int = 12000) -> list:
+    enc = tiktoken.encoding_for_model("gpt-4")
+    total = 0
+    limited = []
+
+    for chunk in contexts:
+        tokens = enc.encode(chunk)
+        if total + len(tokens) > max_tokens:
+            break
+        limited.append(chunk)
+        total += len(tokens)
+
+    return limited
+def log_matched_nodes_and_neighbors(graph, nodes, top_nodes, expanded_ids):
+    id_to_node = {n.id: n for n in nodes}
+
+    print("\n🔍 Top matched nodes:")
+    for node_id, score in top_nodes:
+        node = id_to_node.get(node_id)
+        if node:
+            name = node.name or "<unnamed>"
+            typ = node.metadata.get("type", "") if node.metadata else "unknown"
+            print(f"  🟢 {name} ({typ}) - score: {score:.3f}")
+        else:
+            print(f"  ⚠️ Node {node_id} not found in loaded nodes (skipped)")
+
+    print("\n🔗 Neighbors included via 1-hop expansion:")
+    for nid in expanded_ids:
+        if nid not in [n[0] for n in top_nodes]:
+            node = id_to_node.get(nid)
+            if node:
+                name = node.name or "<unnamed>"
+                typ = node.metadata.get("type", "") if node.metadata else "unknown"
+                print(f"  🔸 {name} ({typ})")
+
+
+def expand_neighbors(graph: nx.DiGraph, node_ids: list, hops: int = 1) -> list:
+    expanded = set(node_ids)
+    for node_id in node_ids:
+        neighbors = nx.single_source_shortest_path_length(graph, node_id, cutoff=hops)
+        expanded.update(neighbors.keys())
+    return list(expanded)
 
 def embed_question(question: str, model) -> np.ndarray:
     return model.encode(question, convert_to_numpy=True)

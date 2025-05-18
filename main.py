@@ -94,6 +94,70 @@ def fetch_repository(args, logger):
         repo_info = fetcher.get_basic_repo_info()
         return repo_path, repo_info
 
+
+def run_main(url=None, local_path=None, persistent=False, role="programmer", skip_fetch=False, skip_process=False):
+    class Args:
+        def __init__(self):
+            self.url = url
+            self.local_path = local_path
+            self.persistent = persistent
+            self.github_token = None
+            self.gitlab_token = None
+            self.output_dir = "./output"
+            self.skip_fetch = skip_fetch
+            self.skip_process = skip_process
+            self.log_level = "INFO"
+            self.output = "report.pdf"
+
+    args = Args()
+    logger = setup_logging(args.log_level)
+    logger.info("Starting repository analysis")
+
+    try:
+        repo_path, repo_info = None, None
+
+        if not args.skip_fetch:
+            repo_path, repo_info = fetch_repository(args, logger)
+            repo_key = get_repo_key(url=args.url, local_path=args.local_path)
+            dirs = setup_directories(args.output_dir, repo_key)
+            repo_info_path = os.path.join(dirs["data"], "repo_info.json")
+            with open(repo_info_path, "w") as f:
+                json.dump(repo_info, f, indent=2)
+        else:
+            repo_key = get_repo_key(url=args.url, local_path=args.local_path)
+            dirs = setup_directories(args.output_dir, repo_key)
+            repo_info_path = os.path.join(dirs["data"], "repo_info.json")
+            if not os.path.exists(repo_info_path):
+                logger.error("Missing repo_info.json and --skip-fetch was used")
+                sys.exit(1)
+            with open(repo_info_path, "r") as f:
+                repo_info = json.load(f)
+            repo_path = args.local_path
+
+        if not args.skip_process:
+            logger.info("Processing Python files with Tree-sitter")
+            py_files = find_files_by_extension(repo_path, ['.py'])
+            all_nodes, all_edges = [], []
+
+            for file in py_files:
+                nodes, edges = extract_nodes_and_edges_from_python(file)
+                all_nodes.extend(nodes)
+                all_edges.extend(edges)
+
+            logger.info(f"Parsed {len(py_files)} Python files")
+            logger.info(f"Extracted {len(all_nodes)} nodes and {len(all_edges)} edges")
+
+            with open(os.path.join(dirs["data"], "graph_nodes.json"), "w", encoding="utf-8") as f:
+                json.dump([n.__dict__ for n in all_nodes], f, indent=2)
+
+            with open(os.path.join(dirs["data"], "graph_edges.json"), "w", encoding="utf-8") as f:
+                json.dump([e.__dict__ for e in all_edges], f, indent=2)
+
+    except Exception as e:
+        logger.error(f"Unhandled exception: {e}", exc_info=True)
+        print(f"Error: {e}")
+        sys.exit(1)
+
 def main():
     args = parse_arguments()
     logger = setup_logging(args.log_level)

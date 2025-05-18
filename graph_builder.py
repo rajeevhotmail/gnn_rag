@@ -36,8 +36,8 @@ if __name__ == "__main__":
     from graph_encoder import encode_graph_with_gnn
 
     nodes, edges = load_nodes_and_edges(
-        "output/psf_requests/data/graph_nodes.json",
-        "output/psf_requests/data/graph_edges.json"
+        "output/monty_context_service/data/graph_nodes.json",
+        "output/monty_context_service/data/graph_edges.json"
     )
 
     G = build_graph(nodes, edges)

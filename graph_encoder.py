@@ -23,7 +23,18 @@ def encode_graph_with_gnn(graph: nx.DiGraph, dim: int = 384):
     node_idx = {node: i for i, node in enumerate(node_list)}
 
     # Use identity matrix as dummy features
-    x = torch.eye(len(node_list), dtype=torch.float32)
+    from codebert_embedder import CodeBERTEmbedder
+
+    embedder = CodeBERTEmbedder()
+    features = []
+
+    for node_id in node_list:
+        node = graph.nodes[node_id]
+        content = node.get("content", "") or ""
+        vec = embedder.embed(content).squeeze()
+        features.append(vec)
+
+    x = torch.stack(features)
 
     edge_index = []
     for source, target in graph.edges():

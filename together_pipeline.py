@@ -16,7 +16,33 @@ from query_handler import (
     log_matched_nodes_and_neighbors, truncate_contexts, rerank_nodes,
     embed_question_with_codebert
 )
+import logging
+from dotenv import load_dotenv
+from together import Together
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+
+Together.api_key = os.getenv("TOGETHER_API_KEY")
+print(os.getenv("TOGETHER_API_KEY"))
+client = Together.together()
+
+def answer_with_together_llm(question, contexts):
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Using the following context:\n\n{contexts}\n\nAnswer the question: {question}"}
+    ]
+
+    response = client.chat.completions.create(
+        model="meta-llama/Llama-3-8b-chat-hf",
+        messages=messages,
+        temperature=0.3,
+        max_tokens=512
+    )
+
+    return response.choices[0].message.content.strip()
 
 # CLI
 parser = argparse.ArgumentParser()
@@ -84,12 +110,7 @@ while True:
     contexts = truncate_contexts(all_contexts, max_tokens=12000)
 
     # Step 6: LLM answer
-    answer = answer_with_llm(
-        question=question,
-        contexts=contexts,
-        llm_provider="openai",
-        api_key=api_key
-    )
+    answer = answer_with_together_llm(question, contexts)
 
     print("\n📌 Answer:")
     print(answer)

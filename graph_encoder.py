@@ -18,7 +18,7 @@ class GraphSAGE(torch.nn.Module):
         x = self.conv2(x, edge_index)
         return x
 
-def encode_graph_with_gnn(graph: nx.DiGraph, dim: int = 384):
+def encode_graph_with_gnn(graph: nx.DiGraph, dim: int = 768):
     node_list = list(graph.nodes)
     node_idx = {node: i for i, node in enumerate(node_list)}
 

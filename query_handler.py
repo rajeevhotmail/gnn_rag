@@ -6,6 +6,20 @@ from sklearn.metrics.pairwise import cosine_similarity
 import openai
 import networkx as nx
 import tiktoken
+from transformers import AutoTokenizer, AutoModel
+import torch
+
+
+# Load CodeBERT (you likely already have this in codebert_embedder.py)
+tokenizer = AutoTokenizer.from_pretrained("microsoft/codebert-base")
+model = AutoModel.from_pretrained("microsoft/codebert-base")
+
+def embed_question_with_codebert(question: str):
+    tokens = tokenizer(question, return_tensors="pt", truncation=True, padding=True)
+    with torch.no_grad():
+        output = model(**tokens)
+    return output.last_hidden_state[:, 0, :].squeeze(0).numpy()
+
 def truncate_contexts(contexts: list, max_tokens: int = 12000) -> list:
     enc = tiktoken.encoding_for_model("gpt-4")
     total = 0
@@ -52,8 +66,8 @@ def expand_neighbors(graph: nx.DiGraph, node_ids: list, hops: int = 1) -> list:
         expanded.update(neighbors.keys())
     return list(expanded)
 
-def embed_question(question: str, model) -> np.ndarray:
-    return model.encode(question, convert_to_numpy=True)
+#def embed_question(question: str, model) -> np.ndarray:
+ #   return model.encode(question, convert_to_numpy=True)
 
 def find_top_k_nodes(question_vec, node_embeddings: dict, k=5):
     node_ids = list(node_embeddings.keys())
@@ -66,6 +80,32 @@ def find_top_k_nodes(question_vec, node_embeddings: dict, k=5):
 
 def get_node_contexts(node_ids: list, all_nodes: list):
     return [n.content for n in all_nodes if n.id in node_ids]
+def rerank_nodes(top_nodes, node_lookup):
+    """
+    Reranks nodes based on structural importance heuristics.
+    :param top_nodes: List of (node_id, score) from semantic similarity
+    :param node_lookup: Dict mapping node_id to Node
+    :return: List of (node_id, adjusted_score), reranked
+    """
+
+    def score(node, base_score):
+        weight = 1.0
+        if node.type == "file":
+            weight += 0.5
+        elif node.type == "class":
+            weight += 0.3
+        elif node.type == "function":
+            if node.name and node.name.lower() in ("main", "process", "run"):
+                weight += 0.2
+        return base_score * weight
+
+    reranked = [
+        (node_id, score(node_lookup[node_id], sim_score))
+        for node_id, sim_score in top_nodes
+        if node_id in node_lookup
+    ]
+
+    return sorted(reranked, key=lambda x: x[1], reverse=True)
 
 def answer_with_llm(question: str, contexts: list, llm_provider="openai", api_key=None):
     context_text = "\n\n".join(contexts)

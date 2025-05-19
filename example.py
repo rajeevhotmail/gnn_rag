@@ -1,10 +1,17 @@
-# example.py
-class Greeter:
-    def __init__(self, name):
-        self.name = name
+from together import Together
 
-    def greet(self):
-        return f"Hello, {self.name}!"
+# Set your Together.ai API key
 
-def helper():
-    return 42
+client = Together(api_key="tgp_v1_2f3bY_-WWTP9Bo9NPSFZk1WYEFhz9aXC5m9FObxVI1o")
+
+response = client.chat.completions.create(
+    model="meta-llama/Llama-3-8b-chat-hf",
+    messages=[
+        {"role": "system", "content": "You are a helpful AI assistant."},
+        {"role": "user", "content": "Explain the purpose of a Graph Neural Network in simple terms."}
+    ],
+    temperature=0.7,
+    max_tokens=300,
+)
+
+print(response.choices[0].message.content.strip())

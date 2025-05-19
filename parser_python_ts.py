@@ -7,6 +7,7 @@ from typing import List
 from codebert_embedder import CodeBERTEmbedder
 
 embedder = CodeBERTEmbedder()
+
 # Load the Python grammar (update path if needed)
 LANGUAGE = Language('build/my-languages.so', 'python')
 parser = Parser()
